@@ -15,8 +15,8 @@ class CSP:
         # the variable pair (i, j)
         self.constraints = {}
 
+        #Variables for stats
         self.number_calls = 0
-
         self.number_failures = 0
 
     def add_variable(self, name, domain):
@@ -114,22 +114,36 @@ class CSP:
         iterations of the loop.
         """
         
+        #Every time this functio is called, we have ont more backtracking step
         self.number_calls+=1
 
+        #We search a variable for which we can select a value
         Xi = self.select_unassigned_variable(assignment)
+
+        #If all variable have a value, then the problem is solved
         if Xi == None:
             return assignment
 
+        #Either way, we try all the possible value fot this variable 
         for value in assignment[Xi]:
 
+            #We create a deepcopy so that the next steps won't be affected by this one
             current_assignment = copy.deepcopy(assignment)
+
+            #We select a value, i.e. we delete all the other possible values
             current_assignment[Xi] = [value]
 
+            #We check if there is any modification due to an inference in the neighbors
             if self.inference(current_assignment, self.get_all_neighboring_arcs(Xi)):
+
+                #If that's the case, we backtrack
                 next_step = self.backtrack(current_assignment)
+
+                #If the next step isn't a failure, it means we achieved to find a solution
                 if next_step != False:
                     return next_step
 
+        #If we didn't find a solution after trying all the values, it means that we need to change something in the previous steps
         self.number_failures+=1
         return False
 
@@ -139,11 +153,15 @@ class CSP:
         in 'assignment' that have not yet been decided, i.e. whose list
         of legal values has a length greater than one.
         """
-        # TODO: IMPLEMENT THIS
+        
+        #We go through all the variables of the problem
         for X in self.variables:
+
+            #If the current variable has more than one possible value, it is not selected and we return it.
             if len(assignment[X]) > 1:
                 return X
 
+        #We didn't find any variable with more than one possible value. The game is solved. 
         return None
 
     def inference(self, assignment, queue):
@@ -152,18 +170,25 @@ class CSP:
         the lists of legal values for each undecided variable. 'queue'
         is the initial queue of arcs that should be visited.
         """
-        # TODO: IMPLEMENT THIS
 
+        #We loop on the elements of the stack
         while len(queue) > 0:
+
+            #We get the first element
             (Xi, Xj) = queue.pop(0)
 
+            #If we changed something in the neighbors, we propagate these modifications
             if self.revise(assignment, Xi, Xj):
+
+                #If the variable has no possible value, we return a failure
                 if len(assignment[Xi]) == 0:
                     return False
 
+                #If it still has possible values, then we add all its neighbors to the queue
                 for arc in self.get_all_neighboring_arcs(Xi):
                     queue.append(arc)
-                        
+        
+        #If we didn't encouter an empty variable, the inference was a success
         return True
 
     def revise(self, assignment, i, j):
@@ -175,15 +200,22 @@ class CSP:
         between i and j, the value should be deleted from i's list of
         legal values in 'assignment'.
         """
-        # TODO: IMPLEMENT THIS
-        revised = True
+
+        #We check all the possible values of i
         for legal_i in assignment[i]:
+            #For the moment, we consider that we have to remove this 
+            revised = True
+
+            #We do the same for the possible values of j 
             for legal_j in assignment[j]:
+
+                #If there is a constraint satisfying the tuple of these two values, we don't remove the value of i
                 if (legal_i, legal_j) in self.constraints[i][j]:
                     revised = False
 
-        if revised:
-            assignment[i].remove(legal_i)
+            #But if there is no possible value of j for which (i, j) has a constraint, we remove it. And we continue for the next value of i
+            if revised:
+                assignment[i].remove(legal_i)
 
         return revised
 
@@ -247,15 +279,30 @@ def print_sudoku_solution(solution):
         if row == 2 or row == 5:
             print '------+-------+------'
 
+
+### MAIN ###
+
+#We first try to solve the map coloration problem, to see if everything is OK. 
 print 'Solution for the map coloration problem\n'
 m = create_map_coloring_csp()
 print "%s\n\n" % m.backtracking_search() 
+#We now print the stats 
+print 'Backtrack function was called %d time(s)' % m.number_calls
+print 'Backtrack function returned failure %d time(s)\n\n' % m.number_failures
 
+#All the sudoku problems
 sudoku_names = ['easy', 'medium', 'hard', 'veryhard']
 
+#We loop on all problems
 for name in sudoku_names:
     print 'Solution for: sudoku %s\n' % name
+
+    #We create the CSP problem
     s = create_sudoku_csp('%s.txt' % name)
+
+    #We search the solution and print it
     print_sudoku_solution(s.backtracking_search())
-    print '\nBacktrack function was called %d time(s)\n' % s.number_calls
+
+    #We now print the stats 
+    print '\nBacktrack function was called %d time(s)' % s.number_calls
     print 'Backtrack function returned failure %d time(s)\n\n' % s.number_failures
